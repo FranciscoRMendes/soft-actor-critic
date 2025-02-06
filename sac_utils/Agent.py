@@ -74,57 +74,77 @@ class Agent:
         self.critic_1.load_checkpoint()
         self.critic_2.load_checkpoint()
 
+    @staticmethod
+    def process_sample(sample, device, dtype=T.float):
+        """
+        Converts a batch of sampled data into tensors and moves them to the specified device.
+
+        Args:
+            sample (tuple): A tuple containing (s_t, replay_buffer_a_t, r_t, s_t_plus_1, done).
+            device (torch.device): The device to which the tensors should be moved.
+            dtype (torch.dtype, optional): The data type of the tensors (except `done`). Defaults to torch.float.
+
+        Returns:
+            tuple: Processed tensors (s_t, replay_buffer_a_t, r_t, s_t_plus_1, done).
+        """
+        s_t, replay_buffer_a_t, r_t, s_t_plus_1, done = sample
+        return (
+            T.tensor(s_t, dtype=dtype).to(device),
+            T.tensor(replay_buffer_a_t, dtype=dtype).to(device),
+            T.tensor(r_t, dtype=dtype).to(device),
+            T.tensor(s_t_plus_1, dtype=dtype).to(device),
+            T.tensor(done, dtype=T.bool).to(device)  # Keeping `done` as a boolean tensor
+        )
+
     def learn(self):
         if self.memory.mem_cntr < self.batch_size:
             return
 
-        state, action, reward, new_state, done = \
-                self.memory.sample_buffer(self.batch_size)
+        # In these lines you just sample a batch of data from the replay buffer.
+        # I use the word replay_buffer_a_t to differentiate from sampled_a_t, which is the action sampled from the actor network
+        # the first is what actually happened in the environment, the second is what the actor network would sample given the state s_t
 
-        reward = T.tensor(reward, dtype=T.float).to(self.actor.device)
-        done = T.tensor(done).to(self.actor.device)
-        state_ = T.tensor(new_state, dtype=T.float).to(self.actor.device)
-        state = T.tensor(state, dtype=T.float).to(self.actor.device)
-        action = T.tensor(action, dtype=T.float).to(self.actor.device)
+        sample = self.memory.sample_buffer(self.batch_size)
+        s_t, replay_buffer_a_t, r_t, s_t_plus_1, done = self.process_sample(sample, self.actor.device)
 
-        value = self.value_net(state).view(-1)
-        value_array = np.array(value.cpu().detach().numpy())
-        value_ = self.target_value_net(state_).view(-1)
-        value_array_ = np.array(value_.cpu().detach().numpy())
-        value_[done] = 0.0
 
-        actions, log_probs = self.actor.sample_normal(state, reparameterize=False)
-        actions_array = self.make_numpy(actions)
+        V_s_t = self.value_net(s_t).view(-1)
 
-        log_probs = log_probs.view(-1)
-        q1_new_policy = self.critic_1.forward(state, actions)
-        q2_new_policy = self.critic_2.forward(state, actions)
+        V_s_t_plus_1 = self.target_value_net(s_t_plus_1).view(-1)
 
-        q1_new_policy_arr = self.make_numpy(q1_new_policy)
-        q2_new_policy_arr = self.make_numpy(q2_new_policy)
+        V_s_t_plus_1[done] = 0.0
 
-        critic_value = T.min(q1_new_policy, q2_new_policy)
-        critic_value = critic_value.view(-1)
+        sampled_a_t, sampled_log_pi_t = self.actor.sample_normal(s_t, reparameterize=False)
 
-        critic_value_arr = self.make_numpy(critic_value)
 
+        sampled_log_pi_t = sampled_log_pi_t.view(-1)
+        q_theta_1_new_policy = self.critic_1.forward(s_t, sampled_a_t)
+        q_theta_2_new_policy = self.critic_2.forward(s_t, sampled_a_t)
+
+
+        q_theta_min = T.min(q_theta_1_new_policy, q_theta_2_new_policy)
+        q_theta_min = q_theta_min.view(-1)
+
+        ##############################################
+        # These lines below correspond to the loss function for the value network
+        # This would be equation 5 in the paper
+        ##############################################
         self.value_net.optimizer.zero_grad()
-        value_target = critic_value - log_probs
-        value_loss = 0.5 * F.mse_loss(value, value_target)
-
-        value_loss_arr = self.make_numpy(value_loss)
-
+        value_loss = 0.5 * F.mse_loss(V_s_t, q_theta_min - sampled_log_pi_t)
         value_loss.backward(retain_graph=True)
         self.value_net.optimizer.step()
 
-        actions, log_probs = self.actor.sample_normal(state, reparameterize=True)
-        log_probs = log_probs.view(-1)
-        q1_new_policy = self.critic_1.forward(state, actions)
-        q2_new_policy = self.critic_2.forward(state, actions)
-        critic_value = T.min(q1_new_policy, q2_new_policy)
-        critic_value = critic_value.view(-1)
+
+
+
+        sampled_a_t, sampled_log_pi_t = self.actor.sample_normal(s_t, reparameterize=True)
+        sampled_log_pi_t = sampled_log_pi_t.view(-1)
+        q_theta_1_new_policy = self.critic_1.forward(s_t, sampled_a_t)
+        q_theta_2_new_policy = self.critic_2.forward(s_t, sampled_a_t)
+        q_theta_min = T.min(q_theta_1_new_policy, q_theta_2_new_policy)
+        q_theta_min = q_theta_min.view(-1)
         
-        actor_loss = log_probs - critic_value
+        actor_loss = sampled_log_pi_t - q_theta_min
         actor_loss = T.mean(actor_loss)
         self.actor.optimizer.zero_grad()
         actor_loss.backward(retain_graph=True)
@@ -132,9 +152,9 @@ class Agent:
 
         self.critic_1.optimizer.zero_grad()
         self.critic_2.optimizer.zero_grad()
-        q_hat = self.scale*reward + self.gamma*value_
-        q1_old_policy = self.critic_1.forward(state, action).view(-1)
-        q2_old_policy = self.critic_2.forward(state, action).view(-1)
+        q_hat = self.scale*r_t + self.gamma*V_s_t_plus_1
+        q1_old_policy = self.critic_1.forward(s_t, replay_buffer_a_t).view(-1)
+        q2_old_policy = self.critic_2.forward(s_t, replay_buffer_a_t).view(-1)
         critic_1_loss = 0.5 * F.mse_loss(q1_old_policy, q_hat)
         critic_2_loss = 0.5 * F.mse_loss(q2_old_policy, q_hat)
 
@@ -144,4 +164,13 @@ class Agent:
         self.critic_2.optimizer.step()
 
         self.update_network_parameters()
+
+        actions_array = self.make_numpy(sampled_a_t)
+        value_array_ = np.array(V_s_t_plus_1.cpu().detach().numpy())
+        value_array = np.array(V_s_t.cpu().detach().numpy())
+        q1_new_policy_arr = self.make_numpy(q_theta_1_new_policy)
+        q2_new_policy_arr = self.make_numpy(q_theta_2_new_policy)
+        critic_value_arr = self.make_numpy(q_theta_min)
+        value_loss_arr = self.make_numpy(value_loss)
+
 
