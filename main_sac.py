@@ -1,7 +1,7 @@
 import pybullet_envs
 import gym
 import numpy as np
-from sac_utils.sac_torch import Agent
+from sac_utils.Agent import Agent
 from sac_utils.utils import plot_learning_curve
 
 if __name__ == '__main__':

@@ -2,6 +2,7 @@ import torch as T
 import torch.nn.functional as F
 from buffer import ReplayBuffer
 from networks import ActorNetwork, CriticNetwork, ValueNetwork
+import numpy as np
 
 # https://proceedings.mlr.press/v80/haarnoja18b/haarnoja18b.pdf# https://proceedings.mlr.press/v80/haarnoja18b/haarnoja18b.pdf
 
@@ -21,11 +22,16 @@ class Agent:
                     name='critic_1')
         self.critic_2 = CriticNetwork(beta, input_dims, n_actions=n_actions,
                     name='critic_2')
-        self.value = ValueNetwork(beta, input_dims, name='value')
-        self.target_value = ValueNetwork(beta, input_dims, name='target_value')
+        self.value_net = ValueNetwork(beta, input_dims, name='value')
+        self.target_value_net = ValueNetwork(beta, input_dims, name='target_value')
 
         self.scale = reward_scale
         self.update_network_parameters(tau=1)
+
+    @staticmethod
+    def make_numpy(x):
+        x = np.array(x.cpu().detach().numpy())
+        return x
 
     def choose_action(self, observation):
         state = T.Tensor([observation]).to(self.actor.device)
@@ -40,8 +46,8 @@ class Agent:
         if tau is None:
             tau = self.tau
 
-        target_value_params = self.target_value.named_parameters()
-        value_params = self.value.named_parameters()
+        target_value_params = self.target_value_net.named_parameters()
+        value_params = self.value_net.named_parameters()
 
         target_value_state_dict = dict(target_value_params)
         value_state_dict = dict(value_params)
@@ -50,21 +56,21 @@ class Agent:
             value_state_dict[name] = tau*value_state_dict[name].clone() + \
                     (1-tau)*target_value_state_dict[name].clone()
 
-        self.target_value.load_state_dict(value_state_dict)
+        self.target_value_net.load_state_dict(value_state_dict)
 
     def save_models(self):
         print('.... saving models ....')
         self.actor.save_checkpoint()
-        self.value.save_checkpoint()
-        self.target_value.save_checkpoint()
+        self.value_net.save_checkpoint()
+        self.target_value_net.save_checkpoint()
         self.critic_1.save_checkpoint()
         self.critic_2.save_checkpoint()
 
     def load_models(self):
         print('.... loading models ....')
         self.actor.load_checkpoint()
-        self.value.load_checkpoint()
-        self.target_value.load_checkpoint()
+        self.value_net.load_checkpoint()
+        self.target_value_net.load_checkpoint()
         self.critic_1.load_checkpoint()
         self.critic_2.load_checkpoint()
 
@@ -81,22 +87,35 @@ class Agent:
         state = T.tensor(state, dtype=T.float).to(self.actor.device)
         action = T.tensor(action, dtype=T.float).to(self.actor.device)
 
-        value = self.value(state).view(-1)
-        value_ = self.target_value(state_).view(-1)
+        value = self.value_net(state).view(-1)
+        value_array = np.array(value.cpu().detach().numpy())
+        value_ = self.target_value_net(state_).view(-1)
+        value_array_ = np.array(value_.cpu().detach().numpy())
         value_[done] = 0.0
 
         actions, log_probs = self.actor.sample_normal(state, reparameterize=False)
+        actions_array = self.make_numpy(actions)
+
         log_probs = log_probs.view(-1)
         q1_new_policy = self.critic_1.forward(state, actions)
         q2_new_policy = self.critic_2.forward(state, actions)
+
+        q1_new_policy_arr = self.make_numpy(q1_new_policy)
+        q2_new_policy_arr = self.make_numpy(q2_new_policy)
+
         critic_value = T.min(q1_new_policy, q2_new_policy)
         critic_value = critic_value.view(-1)
 
-        self.value.optimizer.zero_grad()
+        critic_value_arr = self.make_numpy(critic_value)
+
+        self.value_net.optimizer.zero_grad()
         value_target = critic_value - log_probs
         value_loss = 0.5 * F.mse_loss(value, value_target)
+
+        value_loss_arr = self.make_numpy(value_loss)
+
         value_loss.backward(retain_graph=True)
-        self.value.optimizer.step()
+        self.value_net.optimizer.step()
 
         actions, log_probs = self.actor.sample_normal(state, reparameterize=True)
         log_probs = log_probs.view(-1)
