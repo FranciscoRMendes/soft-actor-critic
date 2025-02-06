@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from buffer import ReplayBuffer
 from networks import ActorNetwork, CriticNetwork, ValueNetwork
 
-# https://proceedings.mlr.press/v80/haarnoja18b/haarnoja18b.pdf
+# https://proceedings.mlr.press/v80/haarnoja18b/haarnoja18b.pdf# https://proceedings.mlr.press/v80/haarnoja18b/haarnoja18b.pdf
 
 class Agent:
     def __init__(self, alpha=0.0003, beta=0.0003, input_dims=[8],

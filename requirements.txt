@@ -3,3 +3,4 @@ torch==2.6.0
 gym==0.24.0
 pybullet==3.2.6
 matplotlib
+tqdm
