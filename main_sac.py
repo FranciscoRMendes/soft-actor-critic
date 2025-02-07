@@ -1,13 +1,13 @@
 import pybullet_envs
 import gym
 import numpy as np
-from sac_utils.Agent import Agent
+from sac_utils.SoftActorCritic import SoftActorCritic
 from sac_utils.utils import plot_learning_curve
 
 if __name__ == '__main__':
     env = gym.make('InvertedPendulumBulletEnv-v0')
-    agent = Agent(input_dims=env.observation_space.shape, env=env,
-            n_actions=env.action_space.shape[0])
+    agent = SoftActorCritic(input_dims=env.observation_space.shape, env=env,
+                            n_actions=env.action_space.shape[0])
     n_games = 250
     # uncomment this line and do a mkdir tmp && mkdir video if you want to
     # record video of the agent playing the game.

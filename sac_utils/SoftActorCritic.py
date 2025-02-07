@@ -6,7 +6,7 @@ import numpy as np
 
 # https://proceedings.mlr.press/v80/haarnoja18b/haarnoja18b.pdf# https://proceedings.mlr.press/v80/haarnoja18b/haarnoja18b.pdf
 
-class Agent:
+class SoftActorCritic:
     def __init__(self, alpha=0.0003, beta=0.0003, input_dims=[8],
                  env=None, gamma=0.99, n_actions=2, max_size=1000000, tau=0.005, batch_size=256, reward_scale=2):
         self.gamma = gamma
