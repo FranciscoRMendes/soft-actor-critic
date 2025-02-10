@@ -3,6 +3,9 @@ import gym
 
 from ll_utils.sac import SoftActorCritic
 from ll_utils.utils import NormalizedActions
+from ll_utils.utils import plot
+use_cuda = torch.cuda.is_available()
+device = torch.device("cuda" if use_cuda else "cpu")
 
 # import the environment
 env = NormalizedActions(gym.make("LunarLanderContinuous-v2"))
@@ -25,7 +28,7 @@ rewards = []
 batch_size = 128
 start_episode = 0
 
-sac = SoftActorCritic(state_dim, action_dim, max_action=1.0)
+sac = SoftActorCritic(state_dim, action_dim, max_action=1.0, device=device)
 
 while frame_idx < max_frames:
     state = env.reset()
@@ -66,5 +69,5 @@ while frame_idx < max_frames:
     print("\r frame {} reward: {}".format(frame_idx, episode_reward))
     rewards.append(episode_reward)
 
-# plot(frame_idx, rewards)
-# torch.save(policy_net, 'Train500000fr')
+plot(frame_idx, rewards)
+torch.save(sac.policy_net, 'Train500000fr')

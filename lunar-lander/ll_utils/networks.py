@@ -5,13 +5,12 @@ import numpy as np
 import gym
 from torch.distributions import Normal
 
-use_cuda = torch.cuda.is_available()
-device = torch.device("cuda" if use_cuda else "cpu")
 
 
 class SoftQNetwork(nn.Module):
-    def __init__(self, num_inputs, num_actions, hidden_size, init_w=3e-3):
+    def __init__(self, num_inputs, num_actions, hidden_size, device = None, init_w=3e-3):
         super(SoftQNetwork, self).__init__()
+        self.device = device
 
         self.linear1 = nn.Linear(num_inputs + num_actions, hidden_size)
         self.linear2 = nn.Linear(hidden_size, hidden_size)
@@ -29,8 +28,9 @@ class SoftQNetwork(nn.Module):
 
 
 class ValueNetwork(nn.Module):
-    def __init__(self, state_dim, hidden_dim, init_w=3e-3):
+    def __init__(self, state_dim, hidden_dim, device = None, init_w=3e-3):
         super(ValueNetwork, self).__init__()
+        self.device = device
 
         self.linear1 = nn.Linear(state_dim, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
@@ -47,9 +47,9 @@ class ValueNetwork(nn.Module):
 
 
 class PolicyNetwork(nn.Module):
-    def __init__(self, num_inputs, num_actions, hidden_size, init_w=3e-3, log_std_min=-20, log_std_max=2):
+    def __init__(self, num_inputs, num_actions, hidden_size, device, init_w=3e-3, log_std_min=-20, log_std_max=2):
         super(PolicyNetwork, self).__init__()
-
+        self.device = device
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
 
@@ -81,13 +81,13 @@ class PolicyNetwork(nn.Module):
 
         normal = Normal(0, 1)
         z = normal.sample()
-        action = torch.tanh(mean + std * z.to(device))
-        log_prob = Normal(mean, std).log_prob(mean + std * z.to(device)) - torch.log(1 - action.pow(2) + epsilon)
+        action = torch.tanh(mean + std * z.to(self.device))
+        log_prob = Normal(mean, std).log_prob(mean + std * z.to(self.device)) - torch.log(1 - action.pow(2) + epsilon)
         return action, log_prob, z, mean, log_std
 
     def get_action(self, state):
         # Then to get the action we use the reparameterization trick
-        state = torch.FloatTensor(state).unsqueeze(0).to(device)
+        # state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
         mean, log_std = self.forward(state)
         std = log_std.exp()
 

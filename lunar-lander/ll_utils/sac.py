@@ -4,13 +4,12 @@ import torch.nn as nn
 from ll_utils.networks import SoftQNetwork, ValueNetwork, PolicyNetwork
 from ll_utils.utils import ReplayBuffer
 
-use_cuda = torch.cuda.is_available()
-device = torch.device("cuda" if use_cuda else "cpu")
+
 
 class SoftActorCritic:
-    def __init__(self, state_dim, action_dim, max_action, hidden_dim = 256):
+    def __init__(self, state_dim, action_dim, max_action, device, hidden_dim = 256):
         self.device = device
-        self.policy_net = PolicyNetwork(state_dim, action_dim, hidden_dim).to(device)
+        self.policy_net = PolicyNetwork(state_dim, action_dim, hidden_dim, device).to(device)
         self.policy_optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=3e-4)
 
         self.soft_q_net1 =  SoftQNetwork(state_dim, action_dim, hidden_dim).to(device)
@@ -40,11 +39,11 @@ class SoftActorCritic:
     def update(self, batch_size, gamma=0.99, soft_tau=1e-2):
         state, action, reward, next_state, done = self.replay_buffer.sample(batch_size)
 
-        state = torch.FloatTensor(state).to(device)
-        next_state = torch.FloatTensor(next_state).to(device)
-        action = torch.FloatTensor(action).to(device)
-        reward = torch.FloatTensor(reward).unsqueeze(1).to(device)
-        done = torch.FloatTensor(np.float32(done)).unsqueeze(1).to(device)
+        state = torch.FloatTensor(state).to(self.device)
+        next_state = torch.FloatTensor(next_state).to(self.device)
+        action = torch.FloatTensor(action).to(self.device)
+        reward = torch.FloatTensor(reward).unsqueeze(1).to(self.device)
+        done = torch.FloatTensor(np.float32(done)).unsqueeze(1).to(self.device)
 
         predicted_q_value1 = self.soft_q_net1(state, action)
         predicted_q_value2 = self.soft_q_net2(state, action)
