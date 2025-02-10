@@ -98,7 +98,7 @@ class PolicyNetwork(nn.Module):
         # add it to the mean and make it activated with a tanh to give our function
         action = torch.tanh(mean + std * z)
 
-        action = action.cpu()
+        # action = action.cpu()
         return action[0]
 
 

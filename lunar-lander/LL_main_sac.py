@@ -21,7 +21,8 @@ action_dim = env.action_space.shape[0]
 state_dim = env.observation_space.shape[0]
 
 n_episodes = 5000
-max_frames = 500000
+# max_frames = 500000
+max_frames = 50000
 max_steps = 500
 frame_idx = 0
 rewards = []
@@ -71,3 +72,7 @@ while frame_idx < max_frames:
 
 plot(frame_idx, rewards)
 torch.save(sac.policy_net, 'Train500000fr')
+
+
+#load the trained model and play a game
+
