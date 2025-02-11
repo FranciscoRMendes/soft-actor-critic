@@ -42,7 +42,8 @@ while frame_idx < max_frames:
         if frame_idx > 1500:
             # action = policy_net.get_action(state).detach()
             action = sac.choose_action(state)
-            next_state, reward, done, _ = env.step(action.numpy())
+            # next_state, reward, done, _ = env.step(action.numpy())
+            next_state, reward, done, _ = env.step(action.cpu()[0].numpy())
         else:
             action = env.action_space.sample()
             next_state, reward, done, _ = env.step(action)

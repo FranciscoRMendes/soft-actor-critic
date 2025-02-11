@@ -26,7 +26,9 @@ while not done:
 # save as gif
 # Save frames as GIF
 # Save frames as GIF (ensuring duration is under 6 seconds)
-imageio.mimsave('gameplay.gif', frames, duration=min(100, 6000 // len(frames)))
+# imageio.mimsave('gameplay.gif', frames, duration=min(100, 5000 // len(frames)))
+imageio.mimsave('gameplay.mp4', frames, fps=min(len(frames) // 6, 30), codec='libx264')
+
 # Close environment
 env.close()
 
