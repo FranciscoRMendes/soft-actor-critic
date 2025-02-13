@@ -22,8 +22,8 @@ action_dim = env.action_space.shape[0]
 state_dim = env.observation_space.shape[0]
 
 n_episodes = 5000
+max_frames = 500000
 # max_frames = 500000
-max_frames = 3000
 max_steps = 500
 frame_idx = 0
 rewards = []
