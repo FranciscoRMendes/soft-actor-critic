@@ -304,7 +304,8 @@ start_episode = 0
 # The outer loop initializes the environment for the beginning of the episode
 # Until we have enough observations in the buffer
 
-policy_net, policy_optimizer, frame_idx, rewards = load_checkpoint(policy_net, policy_optimizer, 'resumeTrain500000fr')
+policy_net, policy_optimizer, frame_idx, rewards = load_checkpoint(policy_net, policy_optimizer,
+                                                                   'trained_models/resumeTrain500000fr')
 print("Resuming from {}".format(frame_idx))
 while frame_idx < max_frames:
     state = env.reset()
@@ -338,13 +339,13 @@ while frame_idx < max_frames:
             break
     state = {'epoch': frame_idx + 1, 'state_dict': policy_net.state_dict(),
              'optimizer': policy_optimizer.state_dict(), 'rewards': rewards}
-    torch.save(state, 'resumeTrain500000fr')
+    torch.save(state, 'trained_models/resumeTrain500000fr')
     start_episode += 1
 
     print("\r frame {} reward: {}".format(frame_idx, episode_reward))
     rewards.append(episode_reward)
 plot(frame_idx, rewards)
-torch.save(policy_net, 'Train500000fr')
+torch.save(policy_net, 'trained_models/Train500000fr')
 
 
 def display_frames_as_gif(frames):

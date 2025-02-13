@@ -4,7 +4,8 @@ import imageio
 
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
-policy_net = torch.load('Train500000fr', weights_only=False, map_location="cpu")
+model_name = 'Train500000fr_good'
+policy_net = torch.load(f'trained_models/{model_name}', weights_only=False, map_location="cpu")
 policy_net.eval()
 from ll_utils.utils import NormalizedActions
 
@@ -27,7 +28,7 @@ while not done:
 # Save frames as GIF
 # Save frames as GIF (ensuring duration is under 6 seconds)
 # imageio.mimsave('gameplay.gif', frames, duration=min(100, 5000 // len(frames)))
-imageio.mimsave('gameplay.mp4', frames, fps=min(len(frames) // 6, 30), codec='libx264')
+imageio.mimsave(f'game_play/videos/{model_name}_gameplay.mp4', frames, fps=min(len(frames) // 6, 30), codec='libx264')
 
 # Close environment
 env.close()

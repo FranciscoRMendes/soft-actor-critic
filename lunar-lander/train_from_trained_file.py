@@ -1,10 +1,12 @@
-import torch
-import gym
+# in this script we will load a trained sac agent and train it for longer
 import datetime
+
+import torch
 from ll_utils.sac import SoftActorCritic
-from ll_utils.utils import NormalizedActions
-from ll_utils.utils import plot
+from ll_utils.utils import NormalizedActions, plot
+import gym
 trained_model_dir = 'trained_models'
+
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
@@ -20,17 +22,18 @@ next_state, reward, done, _ = env.step(action)
 # store information about action and state dimensions
 action_dim = env.action_space.shape[0]
 state_dim = env.observation_space.shape[0]
+file_name = "./trained_models/Train_3000_2025-02-12-18-19-11"
 
 n_episodes = 5000
 # max_frames = 500000
-max_frames = 3000
+max_frames = 50000
 max_steps = 500
 frame_idx = 0
 rewards = []
 batch_size = 128
 start_episode = 0
 
-sac = SoftActorCritic(state_dim, action_dim, max_action=1.0, device=device)
+sac = SoftActorCritic.from_file(file_name, state_dim=state_dim, action_dim=action_dim, max_action=1.0, device="cpu")
 
 while frame_idx < max_frames:
     state = env.reset()
@@ -78,4 +81,3 @@ todays_date_and_time = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 sac_file = f'Train_{max_frames}_{todays_date_and_time}'
 sac_file = f'{trained_model_dir}/{sac_file}'
 sac.save(sac_file)
-

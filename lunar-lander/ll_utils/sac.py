@@ -7,6 +7,8 @@ from ll_utils.utils import ReplayBuffer
 
 
 class SoftActorCritic:
+    policy_net = None
+
     def __init__(self, state_dim, action_dim, max_action, device, hidden_dim = 256):
         self.device = device
         self.policy_net = PolicyNetwork(state_dim, action_dim, hidden_dim, device).to(device)
@@ -93,3 +95,44 @@ class SoftActorCritic:
             target_param.data.copy_(
                 target_param.data * (1.0 - soft_tau) + param.data * soft_tau
             )
+
+    def save(self, filename):
+        """
+        Saves all networks to the filename
+        :param filename: file name to save
+        :return: None
+        """
+        torch.save({
+            'policy_net': self.policy_net.state_dict(),
+            'value_net': self.value_net.state_dict(),
+            'soft_q_net1': self.soft_q_net1.state_dict(),
+            'soft_q_net2': self.soft_q_net2.state_dict(),
+            'target_value_net': self.target_value_net.state_dict(),
+            'policy_optimizer': self.policy_optimizer.state_dict(),
+            'value_optimizer': self.value_optimizer.state_dict(),
+            'soft_q_optimizer_1': self.soft_q_optimizer_1.state_dict(),
+            'soft_q_optimizer_2': self.soft_q_optimizer_2.state_dict()
+        }, filename)
+
+    @classmethod
+    def from_file(cls, filename, state_dim, action_dim, max_action, device, hidden_dim=256):
+        """
+        Loads a SoftActorCritic model from a file.
+        """
+        model = cls(state_dim, action_dim, max_action, device, hidden_dim)
+        checkpoint = torch.load(filename, map_location=device, weights_only=False)
+
+        model.policy_net.load_state_dict(checkpoint['policy_net'])
+        model.value_net.load_state_dict(checkpoint['value_net'])
+        model.soft_q_net1.load_state_dict(checkpoint['soft_q_net1'])
+        model.soft_q_net2.load_state_dict(checkpoint['soft_q_net2'])
+        model.target_value_net.load_state_dict(checkpoint['target_value_net'])
+
+        model.policy_optimizer.load_state_dict(checkpoint['policy_optimizer'])
+        model.value_optimizer.load_state_dict(checkpoint['value_optimizer'])
+        model.soft_q_optimizer_1.load_state_dict(checkpoint['soft_q_optimizer_1'])
+        model.soft_q_optimizer_2.load_state_dict(checkpoint['soft_q_optimizer_2'])
+
+        return model
+
+
