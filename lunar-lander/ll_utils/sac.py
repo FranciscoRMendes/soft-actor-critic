@@ -7,8 +7,6 @@ from ll_utils.utils import ReplayBuffer
 
 
 class SoftActorCritic:
-    policy_net = None
-
     def __init__(self, state_dim, action_dim, max_action, device, hidden_dim = 256):
         self.device = device
         self.policy_net = PolicyNetwork(state_dim, action_dim, hidden_dim, device).to(device)
@@ -52,35 +50,42 @@ class SoftActorCritic:
         predicted_value = self.value_net(state)
         new_action, log_prob, epsilon, mean, log_std = self.policy_net.evaluate(state)
 
-        # Training Q Function
+        #########################
+        ## Training Q Function ##
+        #########################
         target_value = self.target_value_net(next_state)
         # we update the two Q function param by reducing the MSE (minimum squared error) between the predicted Q value for a state-action pair and its corresponding target_q_value
-        target_q_value = reward + (1 - done) * gamma * target_value
-        q_value_loss1 = self.soft_q_criterion1(predicted_q_value1, target_q_value.detach())
-        q_value_loss2 = self.soft_q_criterion2(predicted_q_value2, target_q_value.detach())
-        # print("Q Loss")
-        # print(q_value_loss1)
-        # clears gradient
+        Q_hat_s_t_a_t  = reward + (1 - done) * gamma * target_value
+        q_value_loss1 = self.soft_q_criterion1(predicted_q_value1, Q_hat_s_t_a_t .detach())
+        q_value_loss2 = self.soft_q_criterion2(predicted_q_value2, Q_hat_s_t_a_t .detach())
+
         self.soft_q_optimizer_1.zero_grad()
-        # passaggio di backward
+        # backward pass
         q_value_loss1.backward()
         # optimization step
         self.soft_q_optimizer_1.step()
         self.soft_q_optimizer_2.zero_grad()
         q_value_loss2.backward()
         self.soft_q_optimizer_2.step()
-        # Training Value Function
-        # for the V network update we take the minimun of the two Q values
+
+        ###########################
+        # Training Value Function #
+        ###########################
+        # for the V network we update using the minimum of the two Q values
         predicted_new_q_value = torch.min(self.soft_q_net1(state, new_action), self.soft_q_net2(state, new_action))
         # substract from it the policy's log probability of selecting that action in that state
         target_value_func = predicted_new_q_value - log_prob
         # we decrese the MSE between the above quantity and the predicted V value of that state
         value_loss = self.value_criterion(predicted_value, target_value_func.detach())
-        # print("V Loss")
-        # print(value_loss)
+
         self.value_optimizer.zero_grad()
         value_loss.backward()
         self.value_optimizer.step()
+
+        ############################
+        # Training Policy Function #
+        ############################
+
         # Training Policy Function
         # we update the policy by reducing the policy's log probability of choosing an action in a state log(pi(s)) - predicted Q-Value of that state-action pair
 
