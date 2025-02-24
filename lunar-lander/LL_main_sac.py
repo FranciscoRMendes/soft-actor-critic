@@ -64,7 +64,7 @@ while frame_idx < max_frames:
 
         if done:
             break
-    state = {'epoch': frame_idx + 1, 'state_dict': sac.policy_net.state_dict(),
+    state = {'epoch': frame_idx + 1, 'state_dict': sac.pi_phi.state_dict(),
              'optimizer': sac.policy_optimizer.state_dict(), 'rewards': rewards}
     # torch.save(state, 'resumeTrain500000fr')
     start_episode += 1

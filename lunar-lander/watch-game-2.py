@@ -21,8 +21,8 @@ device = torch.device("cuda" if use_cuda else "cpu")
 model_name = 'Train_500000_2025-02-13-01-39-25'
 file_name = f"./trained_models/{model_name}"
 sac = SoftActorCritic.from_file(file_name, state_dim=state_dim, action_dim=action_dim, max_action=1.0, device="cpu")
-policy_net = sac.policy_net
-sac.policy_net.eval()
+policy_net = sac.pi_phi
+sac.pi_phi.eval()
 # policy_net = torch.load(f'trained_models/{model_name}', weights_only=False, map_location="cpu")
 # policy_net.eval()
 from ll_utils.utils import NormalizedActions
