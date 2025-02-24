@@ -18,7 +18,7 @@ state_dim = env.observation_space.shape[0]
 
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
-model_name = 'Train_500000_2025-02-13-01-39-25'
+model_name = 'Train_3000_2025-02-11-17-25-07'
 file_name = f"./trained_models/{model_name}"
 sac = SoftActorCritic.from_file(file_name, state_dim=state_dim, action_dim=action_dim, max_action=1.0, device="cpu")
 policy_net = sac.pi_phi
